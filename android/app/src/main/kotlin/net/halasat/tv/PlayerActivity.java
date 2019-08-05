@@ -240,7 +240,7 @@ public class PlayerActivity extends AppCompatActivity {
         orientationEventListener = new OrientationEventListener(PlayerActivity.this) {
             @Override
             public void onOrientationChanged(int orientation) {
-                if (orientation ==90 && orientation== 270) {
+                if (orientation ==90 || orientation== 270) {
                     getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
                     getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
                     hideSystemUI();
