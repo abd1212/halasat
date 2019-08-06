@@ -1,7 +1,5 @@
 package net.halasat.tv;
 
-import android.animation.LayoutTransition;
-import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
@@ -9,8 +7,6 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.text.Layout;
-import android.util.Log;
 import android.view.OrientationEventListener;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,8 +22,6 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.core.content.ContextCompat;
 import androidx.mediarouter.app.MediaRouteButton;
 
 import com.google.android.exoplayer2.DefaultLoadControl;
@@ -74,25 +68,32 @@ public class PlayerActivity extends AppCompatActivity {
     private ImageView backArrow, bottomSheet;
     private LinearLayout bottomSheetLayout;
     private BottomSheetBehavior bottomSheetBehavior;
-    private TextView changeQuailty, changeFontSize, textSize,exo_duration,exo_position,text_title;
+    private TextView changeQuailty, changeFontSize, textSize, exo_duration, exo_position, text_title;
     private OrientationEventListener orientationEventListener;
-    private ImageButton nextButton,prevButton,forewordButton, backwardButton;
+    private ImageButton nextButton, prevButton, forewordButton, backwardButton;
     private DefaultTimeBar timeBar;
-    private ConstraintLayout layoutControle;
+    private LinearLayout layoutControle;
     private FrameLayout playButton;
+    private SubtitleView subtitleView;
+    private String srt_link;
+    private Animation fadeIn,fadeOut;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.video_player);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+//        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         setOrientationSensor();
+
 
         // Find view by id
         findView();
         // Fullscreen activity
         hideSystemUI();
         // Setup custom toolbar
+        fadeIn = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.fade_in);
+        fadeOut = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.fade_out);
         setupActionBar();
         simpleExoPlayerView.setControllerShowTimeoutMs(0);
         simpleExoPlayerView.setControllerHideOnTouch(false);
@@ -101,6 +102,9 @@ public class PlayerActivity extends AppCompatActivity {
         // Set videoUrl
         setVideoUri(getIntent().getStringExtra("videoUrl"));
         text_title.setText(getIntent().getStringExtra("title"));
+        srt_link = getIntent().getStringExtra("subtitle");
+
+
         // Initialize SimpleExoPlayer
         initializePlayer();
         // Setup setUpMediaRouteButton for casting
@@ -122,6 +126,8 @@ public class PlayerActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
+                if(bottomSheetLayout.getVisibility() == View.VISIBLE) return;
+
                 bottomSheetLayout.setVisibility(View.VISIBLE);
                 //hide text
                 textSize.setVisibility(View.GONE);
@@ -139,7 +145,7 @@ public class PlayerActivity extends AppCompatActivity {
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
                /* LayoutTransition layoutTransition=new LayoutTransition();
                 bottomSheetLayout.setLayoutTransition(layoutTransition);*/
-                Animation animSlideDown = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.slid_up);
+                Animation animSlideDown = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.slid_up);
                 bottomSheetLayout.startAnimation(animSlideDown);
 
                 // set hideable or not
@@ -176,8 +182,6 @@ public class PlayerActivity extends AppCompatActivity {
         });
 
 
-
-
         // set orientation listener
         backArrow.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -187,8 +191,8 @@ public class PlayerActivity extends AppCompatActivity {
 
             }
         });
-        boolean showTV = getIntent().getBooleanExtra("useTvPlayer",false);
-        if(showTV){
+        boolean showTV = getIntent().getBooleanExtra("useTvPlayer", false);
+        if (showTV) {
             hideController();
         }
     }
@@ -198,8 +202,8 @@ public class PlayerActivity extends AppCompatActivity {
         bottomSheetLayout.setVisibility(View.VISIBLE);
         // set the peek height
         bottomSheetBehavior.setPeekHeight(150);
-         bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
-        Animation animSlideDown = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.slid_up);
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
+        Animation animSlideDown = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.slid_up);
         bottomSheetLayout.startAnimation(animSlideDown);
         // set hideable or not
         bottomSheetBehavior.setHideable(false);
@@ -240,29 +244,10 @@ public class PlayerActivity extends AppCompatActivity {
         orientationEventListener = new OrientationEventListener(PlayerActivity.this) {
             @Override
             public void onOrientationChanged(int orientation) {
-                if (orientation ==90 || orientation== 270) {
-                    getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
-                    getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
-                    hideSystemUI();
-                }
-                else
-                {
-                    PlayerActivity.this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-                    getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
-                    hideSystemUI();
-                }
-                int epsilon = 10;
-                int leftLandscape = 90;
-                int rightLandscape = 270;
-                if (epsilonCheck(orientation, leftLandscape, epsilon) ||
-                        epsilonCheck(orientation, rightLandscape, epsilon)) {
-                    PlayerActivity.this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
-                }
+
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
             }
 
-            private boolean epsilonCheck(int a, int b, int epsilon) {
-                return a > b - epsilon && a < b + epsilon;
-            }
         };
         orientationEventListener.enable();
 
@@ -286,12 +271,9 @@ public class PlayerActivity extends AppCompatActivity {
         );
 
         //  Create the player
-       /* player = ExoPlayerFactory.
-                newSimpleInstance(this, trackSelector, loadControl);*/
 
         player = ExoPlayerFactory.
                 newSimpleInstance(this, trackSelector, loadControl);
-
 
 
         // Produces DataSource instances through which media data is loaded.
@@ -304,6 +286,15 @@ public class PlayerActivity extends AppCompatActivity {
         MediaSource videoSource = new
                 HlsMediaSource.Factory(dataSourceFactory).
                 createMediaSource(videoUri);
+
+        /*Format textFormat = Format.createTextSampleFormat(null, MimeTypes.APPLICATION_SUBRIP,
+                null, Format.NO_VALUE, Format.NO_VALUE, "ar", null, Format.OFFSET_SAMPLE_RELATIVE);
+
+        Uri uri = Uri.parse(srt_link);
+        MediaSource subtitleSource = new SingleSampleMediaSource(uri, dataSourceFactory, textFormat, C.TIME_UNSET);
+
+        MergingMediaSource mergedSource = new MergingMediaSource(videoSource, subtitleSource);*/
+
 
         // Prepare video with sub title
         player.prepare(videoSource);
@@ -320,16 +311,23 @@ public class PlayerActivity extends AppCompatActivity {
             public void onClick(View v) {
 
 
-                if (mToolbar.getVisibility() == View.VISIBLE) {
+                if (mToolbar.getVisibility() == View.VISIBLE ) {
+                    mToolbar.startAnimation(fadeOut);
                     mToolbar.setVisibility(View.INVISIBLE);
+                    layoutControle.startAnimation(fadeOut);
                     layoutControle.setVisibility(View.INVISIBLE);
                 } else if (mToolbar.getVisibility() == View.GONE || mToolbar.getVisibility() == View.INVISIBLE) {
+                    if(mToolbar == null){
+                        Toast.makeText(PlayerActivity.this, "nullkkiijijjioj", Toast.LENGTH_SHORT).show();
+                    }
                     mToolbar.setVisibility(View.VISIBLE);
+                    mToolbar.startAnimation(fadeIn);
                     layoutControle.setVisibility(View.VISIBLE);
+                    layoutControle.startAnimation(fadeIn);
                     //delayApp_bar();
                 }
                 if (bottomSheetLayout.getVisibility() == View.VISIBLE) {
-                    Animation animSlideDown = AnimationUtils.loadAnimation(PlayerActivity.this,R.anim.slid_down);
+                    Animation animSlideDown = AnimationUtils.loadAnimation(PlayerActivity.this, R.anim.slid_down);
                     bottomSheetLayout.startAnimation(animSlideDown);
                     bottomSheetLayout.setVisibility(View.GONE);
                 }
@@ -344,21 +342,20 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
 
-    public void delayApp_bar(){
+    public void delayApp_bar() {
         final Handler handler = new Handler();
 
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 mToolbar.setVisibility(View.INVISIBLE);
+                mToolbar.startAnimation(fadeOut);
                 layoutControle.setVisibility(View.INVISIBLE);
+                layoutControle.startAnimation(fadeOut);
             }
         }, 5000);
 
     }
-
-
-
 
 
     @Override
@@ -369,8 +366,6 @@ public class PlayerActivity extends AppCompatActivity {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
     }
-
-
 
 
     private void setUpCasting() {
@@ -453,6 +448,7 @@ public class PlayerActivity extends AppCompatActivity {
             params.height = ViewGroup.LayoutParams.MATCH_PARENT;
             simpleExoPlayerView.setLayoutParams(params);
             mToolbar.setVisibility(View.GONE);
+            mToolbar.startAnimation(fadeOut);
             hideSystemUI();
             // Hide status bar
             //getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -466,6 +462,7 @@ public class PlayerActivity extends AppCompatActivity {
             params.height = ViewGroup.LayoutParams.MATCH_PARENT;
             simpleExoPlayerView.setLayoutParams(params);
             mToolbar.setVisibility(View.VISIBLE);
+            mToolbar.startAnimation(fadeIn);
             hideSystemUI();
         }
     }
@@ -486,7 +483,7 @@ public class PlayerActivity extends AppCompatActivity {
 
 
         mToolbar.setVisibility(View.VISIBLE);
-
+        mToolbar.startAnimation(fadeIn);
         setSupportActionBar(mToolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(true);
 
@@ -496,7 +493,7 @@ public class PlayerActivity extends AppCompatActivity {
     private void findView() {
         mToolbar = findViewById(R.id.app_bar);
         simpleExoPlayerView = findViewById(R.id.exoplayer);
-        text_title=mToolbar.findViewById(R.id.text_title);
+        text_title = mToolbar.findViewById(R.id.text_title);
 
         PlaybackControlView controlView = simpleExoPlayerView.findViewById(R.id.exo_controller);
         //mFullScreenIcon = controlView.findViewById(R.id.exo_fullscreen_icon);
@@ -506,16 +503,16 @@ public class PlayerActivity extends AppCompatActivity {
         changeFontSize = findViewById(R.id.change_font_size);
         changeQuailty = findViewById(R.id.change_quality);
         textSize = findViewById(R.id.text_size);
-        layoutControle=controlView.findViewById(R.id.controlLayout);
+        layoutControle = controlView.findViewById(R.id.controlLayout);
         //playButton=findViewById(R.id.playButton);
-        forewordButton=controlView.findViewById(R.id.exo_ffwd);
-        backwardButton=controlView.findViewById(R.id.exo_rew);
+        forewordButton = controlView.findViewById(R.id.exo_ffwd);
+        backwardButton = controlView.findViewById(R.id.exo_rew);
         //nextButton=controlView.findViewById(R.id.exo_next);
         //prevButton=controlView.findViewById(R.id.exo_prev);
-        timeBar=controlView.findViewById(R.id.exo_progress);
-        exo_duration=controlView.findViewById(R.id.exo_duration);
-        exo_position=controlView.findViewById(R.id.exo_position);
-        mediaRouteButton =  mToolbar.findViewById(R.id.media_route_button);
+        timeBar = controlView.findViewById(R.id.exo_progress);
+        exo_duration = controlView.findViewById(R.id.exo_duration);
+        exo_position = controlView.findViewById(R.id.exo_position);
+        mediaRouteButton = mToolbar.findViewById(R.id.media_route_button);
         //titleText=mToolbar.findViewById(R.id.title_text);
 //        ViewGroup viewGroup= (ViewGroup) layoutControle.getParent();
 //        View myButtonPlay= getLayoutInflater().inflate(R.layout.button_play, viewGroup, false);
@@ -610,13 +607,11 @@ public class PlayerActivity extends AppCompatActivity {
             }
 
 
-
         }
     }
+
     // Hide controller button for TV use
-    public void hideController(){
-       // layoutControle.setVisibility(View.GONE);
-       // playButton.setVisibility(View.VISIBLE);
+    public void hideController() {
         exo_position.setVisibility(View.INVISIBLE);
         forewordButton.setImageDrawable(null);
         forewordButton.setBackground(null);
@@ -624,8 +619,6 @@ public class PlayerActivity extends AppCompatActivity {
         backwardButton.setImageDrawable(null);
         backwardButton.setBackground(null);
         backwardButton.setVisibility(View.GONE);
-        //nextButton.setImageDrawable(null);
-        //prevButton.setImageDrawable(null);
         exo_duration.setVisibility(View.GONE);
         timeBar.setEnabled(false);
         timeBar.setVisibility(View.GONE);

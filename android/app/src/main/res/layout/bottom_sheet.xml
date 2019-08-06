@@ -6,6 +6,7 @@
     android:background="@android:color/white"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:visibility="invisible"
     app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
     android:padding="@dimen/bottom_sheet_margin">
     <TextView

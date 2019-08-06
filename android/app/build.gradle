@@ -84,6 +84,7 @@ dependencies {
     // ExoPlayer dependencies
     implementation 'com.google.android.exoplayer:exoplayer:2.10.0'
 
+
     implementation 'androidx.browser:browser:1.0.0'
 
 
