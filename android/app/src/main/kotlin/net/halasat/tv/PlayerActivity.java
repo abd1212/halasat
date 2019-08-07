@@ -6,7 +6,6 @@ import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
 import android.view.OrientationEventListener;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,18 +17,14 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.mediarouter.app.MediaRouteButton;
-
 import com.google.android.exoplayer2.DefaultLoadControl;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.LoadControl;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.ext.cast.CastPlayer;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.hls.HlsMediaSource;
 import com.google.android.exoplayer2.text.CaptionStyleCompat;
@@ -44,13 +39,6 @@ import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
-import com.google.android.gms.cast.MediaInfo;
-import com.google.android.gms.cast.MediaMetadata;
-import com.google.android.gms.cast.MediaQueueItem;
-import com.google.android.gms.cast.framework.CastButtonFactory;
-import com.google.android.gms.cast.framework.CastContext;
-import com.google.android.gms.cast.framework.CastState;
-import com.google.android.gms.cast.framework.CastStateListener;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 
 public class PlayerActivity extends AppCompatActivity {
@@ -60,30 +48,24 @@ public class PlayerActivity extends AppCompatActivity {
     private PlayerView simpleExoPlayerView;
     private DefaultTrackSelector trackSelector;
     private Uri videoUri;
-    private ImageView mFullScreenIcon;
     private Toolbar mToolbar;
-    private MediaRouteButton mediaRouteButton;
-    private CastContext castContext;
     private String mediaInfoTitle;
     private ImageView backArrow, bottomSheet;
     private LinearLayout bottomSheetLayout;
     private BottomSheetBehavior bottomSheetBehavior;
     private TextView changeQuailty, changeFontSize, textSize, exo_duration, exo_position, text_title;
-    private OrientationEventListener orientationEventListener;
-    private ImageButton nextButton, prevButton, forewordButton, backwardButton;
+    private ImageButton  forewordButton, backwardButton;
     private DefaultTimeBar timeBar;
     private LinearLayout layoutControle;
-    private FrameLayout playButton;
-    private SubtitleView subtitleView;
-    private String srt_link;
     private Animation fadeIn,fadeOut;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.video_player);
-//        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        //check the both sid of landscape
         setOrientationSensor();
 
 
@@ -91,33 +73,27 @@ public class PlayerActivity extends AppCompatActivity {
         findView();
         // Fullscreen activity
         hideSystemUI();
-        // Setup custom toolbar
+
+        //define fade anim to appbar , control button and progress bar
         fadeIn = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.fade_in);
         fadeOut = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.fade_out);
+
+        // Setup custom toolbar
         setupActionBar();
+
+        //made the appbar , control button and progress bar hid by click on exoplaer
         simpleExoPlayerView.setControllerShowTimeoutMs(0);
         simpleExoPlayerView.setControllerHideOnTouch(false);
-        // Set tit
+
+        // Set title
         setMediaInfoTitle(getIntent().getStringExtra("title"));
         // Set videoUrl
         setVideoUri(getIntent().getStringExtra("videoUrl"));
+        //set title to appbar
         text_title.setText(getIntent().getStringExtra("title"));
-        srt_link = getIntent().getStringExtra("subtitle");
-
 
         // Initialize SimpleExoPlayer
         initializePlayer();
-        // Setup setUpMediaRouteButton for casting
-        //setUpCasting();
-        // Setup media info for casting
-        //setUpMediaInfo();
-        //initial full screen mode
-        /*initFullscreenDialog();
-        initFullscreenButton();
-        if (mExoPlayerFullscreen) {
-            mFullScreenIcon.setImageDrawable(ContextCompat.getDrawable(PlayerActivity.this, R.drawable.ic_fullscreen_shrink));
-        }*/
-
 
         //set bottom sheet
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheetLayout);
@@ -139,12 +115,9 @@ public class PlayerActivity extends AppCompatActivity {
                 changeFontSize.setCompoundDrawablesWithIntrinsicBounds(fontDrawable, null, null, null);
                 changeQuailty.setCompoundDrawablesWithIntrinsicBounds(quailtyDrawable, null, null, null);
 
-
                 // set the peek height
                 bottomSheetBehavior.setPeekHeight(150);
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
-               /* LayoutTransition layoutTransition=new LayoutTransition();
-                bottomSheetLayout.setLayoutTransition(layoutTransition);*/
                 Animation animSlideDown = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.slid_up);
                 bottomSheetLayout.startAnimation(animSlideDown);
 
@@ -157,14 +130,12 @@ public class PlayerActivity extends AppCompatActivity {
                         bottomSheetBehavior.setPeekHeight(0);
                         bottomSheetLayout.setVisibility(View.GONE);
                         changeFontSize();
-
                     }
                 });
                 changeQuailty.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         bottomSheetLayout.setVisibility(View.GONE);
-
                         if (!isShowingTrackSelectionDialog
                                 && TrackSelectionDialog.willHaveContent((DefaultTrackSelector) trackSelector)) {
                             isShowingTrackSelectionDialog = true;
@@ -173,8 +144,6 @@ public class PlayerActivity extends AppCompatActivity {
                                             (DefaultTrackSelector) trackSelector,
                                             /* onDismissListener= */ dismissedDialog -> isShowingTrackSelectionDialog = false);
                             trackSelectionDialog.show(getSupportFragmentManager(), /* tag= */ null);
-
-
                         }
                     }
                 });
@@ -182,17 +151,19 @@ public class PlayerActivity extends AppCompatActivity {
         });
 
 
-        // set orientation listener
+        // arrow in app bare
         backArrow.setOnClickListener(new View.OnClickListener() {
             @Override
-
             public void onClick(View view) {
                 finish();
-
             }
         });
+
+        //when  the tv is operation
         boolean showTV = getIntent().getBooleanExtra("useTvPlayer", false);
         if (showTV) {
+
+            //hid control button of exoplayer
             hideController();
         }
     }
@@ -237,22 +208,20 @@ public class PlayerActivity extends AppCompatActivity {
                 bottomSheetLayout.setVisibility(View.GONE);
             }
         });
-
     }
 
+    //to put player on both side of landscape
     private void setOrientationSensor() {
-        orientationEventListener = new OrientationEventListener(PlayerActivity.this) {
+        OrientationEventListener orientationEventListener = new OrientationEventListener(PlayerActivity.this) {
             @Override
             public void onOrientationChanged(int orientation) {
 
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
             }
-
         };
         orientationEventListener.enable();
 
     }
-
 
     private void initializePlayer() {
         DefaultBandwidthMeter bandwidthMeter = new DefaultBandwidthMeter(); //test
@@ -271,10 +240,8 @@ public class PlayerActivity extends AppCompatActivity {
         );
 
         //  Create the player
-
         player = ExoPlayerFactory.
                 newSimpleInstance(this, trackSelector, loadControl);
-
 
         // Produces DataSource instances through which media data is loaded.
         DataSource.Factory dataSourceFactory = new
@@ -287,44 +254,28 @@ public class PlayerActivity extends AppCompatActivity {
                 HlsMediaSource.Factory(dataSourceFactory).
                 createMediaSource(videoUri);
 
-        /*Format textFormat = Format.createTextSampleFormat(null, MimeTypes.APPLICATION_SUBRIP,
-                null, Format.NO_VALUE, Format.NO_VALUE, "ar", null, Format.OFFSET_SAMPLE_RELATIVE);
-
-        Uri uri = Uri.parse(srt_link);
-        MediaSource subtitleSource = new SingleSampleMediaSource(uri, dataSourceFactory, textFormat, C.TIME_UNSET);
-
-        MergingMediaSource mergedSource = new MergingMediaSource(videoSource, subtitleSource);*/
-
-
         // Prepare video with sub title
         player.prepare(videoSource);
+
         // Set the player to view
         simpleExoPlayerView.setPlayer(player);
 
-
         // Auto play
         player.setPlayWhenReady(true);
-        // Hide navigation bar
 
         simpleExoPlayerView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-
                 if (mToolbar.getVisibility() == View.VISIBLE ) {
                     mToolbar.startAnimation(fadeOut);
                     mToolbar.setVisibility(View.INVISIBLE);
                     layoutControle.startAnimation(fadeOut);
                     layoutControle.setVisibility(View.INVISIBLE);
                 } else if (mToolbar.getVisibility() == View.GONE || mToolbar.getVisibility() == View.INVISIBLE) {
-                    if(mToolbar == null){
-                        Toast.makeText(PlayerActivity.this, "nullkkiijijjioj", Toast.LENGTH_SHORT).show();
-                    }
                     mToolbar.setVisibility(View.VISIBLE);
                     mToolbar.startAnimation(fadeIn);
                     layoutControle.setVisibility(View.VISIBLE);
                     layoutControle.startAnimation(fadeIn);
-                    //delayApp_bar();
                 }
                 if (bottomSheetLayout.getVisibility() == View.VISIBLE) {
                     Animation animSlideDown = AnimationUtils.loadAnimation(PlayerActivity.this, R.anim.slid_down);
@@ -332,31 +283,12 @@ public class PlayerActivity extends AppCompatActivity {
                     bottomSheetLayout.setVisibility(View.GONE);
                 }
                 hideSystemUI();
-
-
             }
         });
 
         changeSubtitleStyle(1);
         player.addListener(new PlayerEventListener());
     }
-
-
-    public void delayApp_bar() {
-        final Handler handler = new Handler();
-
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                mToolbar.setVisibility(View.INVISIBLE);
-                mToolbar.startAnimation(fadeOut);
-                layoutControle.setVisibility(View.INVISIBLE);
-                layoutControle.startAnimation(fadeOut);
-            }
-        }, 5000);
-
-    }
-
 
     @Override
     protected void onPause() {
@@ -365,56 +297,6 @@ public class PlayerActivity extends AppCompatActivity {
         player.setPlayWhenReady(false);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
-    }
-
-
-    private void setUpCasting() {
-
-
-        CastButtonFactory.setUpMediaRouteButton(getApplicationContext(), mediaRouteButton);
-
-        castContext = CastContext.getSharedInstance(this);
-        if (castContext.getCastState() != CastState.NO_DEVICES_AVAILABLE)
-            mediaRouteButton.setVisibility(View.VISIBLE);
-
-        castContext.addCastStateListener(new CastStateListener() {
-            @Override
-            public void onCastStateChanged(int state) {
-                if (state == CastState.NO_DEVICES_AVAILABLE)
-                    mediaRouteButton.setVisibility(View.GONE);
-                else {
-                    if (mediaRouteButton.getVisibility() == View.GONE)
-                        mediaRouteButton.setVisibility(View.VISIBLE);
-                }
-            }
-        });
-    }
-
-    private void setUpMediaInfo() {
-        MediaMetadata movieMetadata = new MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE);
-        movieMetadata.putString(MediaMetadata.KEY_TITLE, getMediaInfoTitle());
-        MediaInfo mediaInfo = new MediaInfo.Builder(videoUri + "")
-
-                .setStreamType(MediaInfo.STREAM_TYPE_BUFFERED)
-                .setContentType("video/m3u8")
-                .setMetadata(movieMetadata)
-                .build();
-
-
-        final MediaQueueItem[] mediaItems = {new MediaQueueItem.Builder(mediaInfo).build()};
-
-        CastPlayer castPlayer = new CastPlayer(castContext);
-        castPlayer.setSessionAvailabilityListener(new CastPlayer.SessionAvailabilityListener() {
-            @Override
-            public void onCastSessionAvailable() {
-
-                castPlayer.loadItems(mediaItems, 0, 0, Player.REPEAT_MODE_ALL);
-            }
-
-            @Override
-            public void onCastSessionUnavailable() {
-            }
-        });
     }
 
     private void hideSystemUI() {
@@ -430,8 +312,6 @@ public class PlayerActivity extends AppCompatActivity {
                         | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
                         | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
                         | View.SYSTEM_UI_FLAG_IMMERSIVE);
-
-
     }
 
 
@@ -450,9 +330,8 @@ public class PlayerActivity extends AppCompatActivity {
             mToolbar.setVisibility(View.GONE);
             mToolbar.startAnimation(fadeOut);
             hideSystemUI();
-            // Hide status bar
-            //getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-// Show status bar
+
+            // Show status bar
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
@@ -480,13 +359,10 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     private void setupActionBar() {
-
-
         mToolbar.setVisibility(View.VISIBLE);
         mToolbar.startAnimation(fadeIn);
         setSupportActionBar(mToolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(true);
-
 
     }
 
@@ -494,9 +370,7 @@ public class PlayerActivity extends AppCompatActivity {
         mToolbar = findViewById(R.id.app_bar);
         simpleExoPlayerView = findViewById(R.id.exoplayer);
         text_title = mToolbar.findViewById(R.id.text_title);
-
         PlaybackControlView controlView = simpleExoPlayerView.findViewById(R.id.exo_controller);
-        //mFullScreenIcon = controlView.findViewById(R.id.exo_fullscreen_icon);
         backArrow = mToolbar.findViewById(R.id.backarrow);
         bottomSheet = mToolbar.findViewById(R.id.bottom_sheet);
         bottomSheetLayout = findViewById(R.id.bottom_sheet_layout);
@@ -504,30 +378,12 @@ public class PlayerActivity extends AppCompatActivity {
         changeQuailty = findViewById(R.id.change_quality);
         textSize = findViewById(R.id.text_size);
         layoutControle = controlView.findViewById(R.id.controlLayout);
-        //playButton=findViewById(R.id.playButton);
         forewordButton = controlView.findViewById(R.id.exo_ffwd);
         backwardButton = controlView.findViewById(R.id.exo_rew);
-        //nextButton=controlView.findViewById(R.id.exo_next);
-        //prevButton=controlView.findViewById(R.id.exo_prev);
         timeBar = controlView.findViewById(R.id.exo_progress);
         exo_duration = controlView.findViewById(R.id.exo_duration);
         exo_position = controlView.findViewById(R.id.exo_position);
-        mediaRouteButton = mToolbar.findViewById(R.id.media_route_button);
-        //titleText=mToolbar.findViewById(R.id.title_text);
-//        ViewGroup viewGroup= (ViewGroup) layoutControle.getParent();
-//        View myButtonPlay= getLayoutInflater().inflate(R.layout.button_play, viewGroup, false);
-//        viewGroup.removeView(layoutControle);
-//        viewGroup.addView(myButtonPlay);
     }
-
-    //initial full screen mode
-    /*private void initFullscreenDialog() {
-
-        if (mExoPlayerFullscreen)
-            closeFullscreenDialog();
-
-
-    }*/
 
     @Override
     protected void onResume() {
@@ -540,50 +396,7 @@ public class PlayerActivity extends AppCompatActivity {
 
     }
 
-
-
-    /*private void openFullscreenDialog() {
-        mFullScreenIcon.setImageDrawable(ContextCompat.getDrawable(PlayerActivity.this, R.drawable.ic_fullscreen_shrink));
-        mExoPlayerFullscreen = true;
-        hideSystemUI();
-        simpleExoPlayerView.hideController();
-
-
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-// Hide status bar
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-// Show status bar
-        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
-    }
-
-    private void closeFullscreenDialog() {
-
-        mExoPlayerFullscreen = false;
-        hideSystemUI();
-        mFullScreenIcon.setImageDrawable(ContextCompat.getDrawable(PlayerActivity.this, R.drawable.ic_fullscreen_expend));
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-
-
-    }
-
-    private void initFullscreenButton() {
-
-
-        mFullScreenIcon.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (!mExoPlayerFullscreen)
-                    openFullscreenDialog();
-                else
-                    closeFullscreenDialog();
-            }
-        });
-    }*/
-
     private void changeSubtitleStyle(int fontSize) {
-        //FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(30, 30);
-        // simpleExoPlayerView.getSubtitleView().setLayoutParams(layoutParams);
         int defaultSubtitleColor = Color.argb(255, 218, 218, 218);
         int outlineColor = Color.argb(255, 43, 43, 43);
         CaptionStyleCompat style =
