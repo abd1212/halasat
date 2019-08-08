@@ -151,6 +151,7 @@ class _BodyState extends State<Body> {
                   : Column(
                       children: [
                         RaisedButton(
+
                           color: Colors.indigo,
                           // icon: Icon(Icons.exit_to_app),
                           child: Text('LOGIN'),
